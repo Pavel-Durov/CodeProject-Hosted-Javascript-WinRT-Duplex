@@ -1,0 +1,66 @@
+﻿<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <script>
+        function NotifyJSFromWinRT(guid, data) {
+            callbackService.NotifyJS(guid, data);
+        }
+        var intervalId = window.setInterval(function () {
+
+            callbackService.Send("Hello!", function (data) {
+                //this is callback
+                if (data) {
+                    console.log(data);
+                }
+
+            });
+        }, 1000);
+
+        var callbackService = {};
+        callbackService._guid = 0;
+        //Native callbacks array, will be invoked as native invoke the NotifyJS event
+        callbackService.callbacks = [];
+
+        //An event theat called from the native side,
+        //picked from the nativeCallBacks array by GUID
+        callbackService.NotifyJS = function (guid, data) {
+            if (data && guid) {
+                //checks if callback exsist
+                if (callbackService.callbacks[guid]) {
+                    //invoking the found callback
+                    callbackService.callbacks[guid](data);
+                    //Deletes the callback from the array
+                    delete callbackService.callbacks[guid];
+                }
+            }
+        }
+
+        //Sends to the C# side...
+        //data = sent message data
+        //callback that will be invoked as native invokes NotifyJS function
+        callbackService.Send = function (data, callback) {
+            var jObj = callbackService._formatObject(data);
+            callbackService.callbacks[jObj.guid] = callback;
+            //The actual javacript method that send the event to the webview
+            window.external.notify(JSON.stringify(jObj));
+        }
+
+        //Gets the format of the API sent object
+        //content = the content of the message
+        //guid = an unique identifier, for determining the callback in callbacks array.
+        callbackService._formatObject = function (content) {
+            ++callbackService._guid
+            return {
+                data: content,
+                'guid': callbackService._guid
+            };
+        };
+    </script>
+</head>
+<body>
+    <h1>HELLO</h1>
+
+</body>
+</html>
